@@ -36,6 +36,11 @@ export default function AdminPage() {
   const [demandes, setDemandes] = useState<any[]>([])
   const [reponses, setReponses] = useState<{[key: number]: string}>({})
   const [loadingAbsence, setLoadingAbsence] = useState(false)
+  const [importClasse, setImportClasse] = useState('')
+  const [importData, setImportData] = useState<any[]>([])
+  const [importLoading, setImportLoading] = useState(false)
+  const [importSuccess, setImportSuccess] = useState('')
+  const [importError, setImportError] = useState('')
 
   const JOURS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi']
   const CRENEAUX = [
@@ -71,7 +76,7 @@ export default function AdminPage() {
     if (data) setAnnonces(data)
   }
 
-const fetchDemandes = async () => {
+  const fetchDemandes = async () => {
     const { data } = await supabase
       .from('demandes')
       .select('*')
@@ -107,7 +112,6 @@ const fetchDemandes = async () => {
       .eq('classe_id', cid)
       .order('nom')
     if (data) setElevesAbsence(data)
-
     const today = new Date().toISOString().slice(0, 10)
     const { data: abs } = await supabase
       .from('absences')
@@ -220,9 +224,7 @@ const fetchDemandes = async () => {
   const handleCellClick = async (jour: string, creneau: string) => {
     const cours = getCours(jour, creneau)
     if (cours) {
-      if (confirm(`Supprimer "${cours.matiere}" ?`)) {
-        supprimerCours(cours.id)
-      }
+      if (confirm(`Supprimer "${cours.matiere}" ?`)) supprimerCours(cours.id)
     } else {
       const mat = prompt(`Matière — ${jour} ${creneau} :`)
       if (!mat) return
@@ -281,11 +283,7 @@ const fetchDemandes = async () => {
           <p className="text-gray-400 text-sm mb-6">{today}</p>
           <div className="bg-white rounded-2xl shadow p-4 mb-6">
             <label className="block text-sm font-semibold text-gray-700 mb-2">Classe</label>
-            <select
-              value={absenceClasseId}
-              onChange={e => { setAbsenceClasseId(e.target.value); fetchElevesAbsence(e.target.value); setSuccess(''); setError('') }}
-              className="w-full border border-gray-300 rounded-lg px-4 py-2 text-gray-800"
-            >
+            <select value={absenceClasseId} onChange={e => { setAbsenceClasseId(e.target.value); fetchElevesAbsence(e.target.value); setSuccess(''); setError('') }} className="w-full border border-gray-300 rounded-lg px-4 py-2 text-gray-800">
               <option value="">-- Sélectionnez une classe --</option>
               {classes.map(c => <option key={c.id} value={c.id}>{c.nom}</option>)}
             </select>
@@ -293,42 +291,26 @@ const fetchDemandes = async () => {
           {absenceClasseId && (
             <>
               <div className="bg-white rounded-2xl shadow p-6 mb-6">
-                <h2 className="font-semibold text-gray-700 mb-4">
-                  Absences du jour ({absentsCoches.length} absent{absentsCoches.length > 1 ? 's' : ''})
-                </h2>
+                <h2 className="font-semibold text-gray-700 mb-4">Absences du jour ({absentsCoches.length} absent{absentsCoches.length > 1 ? 's' : ''})</h2>
                 {success && <div className="bg-green-50 border border-green-200 text-green-600 px-4 py-3 rounded-lg mb-4 text-sm">{success}</div>}
-                {elevesAbsence.length === 0 && (
-                  <p className="text-gray-400 text-sm text-center py-4">Aucun élève dans cette classe.</p>
-                )}
+                {elevesAbsence.length === 0 && <p className="text-gray-400 text-sm text-center py-4">Aucun élève dans cette classe.</p>}
                 <div className="space-y-2 mb-4">
                   {elevesAbsence.map(e => (
-                    <div
-                      key={e.id}
-                      onClick={() => toggleAbsent(e.id)}
-                      className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition border-2 ${absentsCoches.includes(e.id) ? 'bg-red-50 border-red-300' : 'bg-gray-50 border-transparent hover:bg-gray-100'}`}
-                    >
+                    <div key={e.id} onClick={() => toggleAbsent(e.id)} className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition border-2 ${absentsCoches.includes(e.id) ? 'bg-red-50 border-red-300' : 'bg-gray-50 border-transparent hover:bg-gray-100'}`}>
                       <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${absentsCoches.includes(e.id) ? 'bg-red-500 border-red-500' : 'border-gray-300'}`}>
                         {absentsCoches.includes(e.id) && <span className="text-white text-xs font-bold">✕</span>}
                       </div>
-                      <span className={`text-sm font-medium ${absentsCoches.includes(e.id) ? 'text-red-700' : 'text-gray-700'}`}>
-                        {e.prenom} {e.nom}
-                      </span>
+                      <span className={`text-sm font-medium ${absentsCoches.includes(e.id) ? 'text-red-700' : 'text-gray-700'}`}>{e.prenom} {e.nom}</span>
                       {absentsCoches.includes(e.id) && <span className="ml-auto text-xs text-red-500 font-semibold">Absent</span>}
                     </div>
                   ))}
                 </div>
-                <button
-                  onClick={enregistrerAbsences}
-                  disabled={loadingAbsence}
-                  className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition disabled:opacity-50"
-                >
+                <button onClick={enregistrerAbsences} disabled={loadingAbsence} className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition disabled:opacity-50">
                   {loadingAbsence ? 'Enregistrement...' : '✅ Enregistrer les absences'}
                 </button>
               </div>
               <div className="bg-white rounded-2xl shadow p-6">
-                <h2 className="font-semibold text-gray-700 mb-4">
-                  📅 Historique — {classes.find(c => c.id === absenceClasseId)?.nom} ({absences.length} absence{absences.length > 1 ? 's' : ''})
-                </h2>
+                <h2 className="font-semibold text-gray-700 mb-4">📅 Historique — {classes.find(c => c.id === absenceClasseId)?.nom} ({absences.length} absence{absences.length > 1 ? 's' : ''})</h2>
                 {absences.length === 0 && <p className="text-gray-400 text-sm text-center py-4">Aucune absence enregistrée.</p>}
                 <div className="space-y-2">
                   {absences.slice().sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(a => {
@@ -339,15 +321,7 @@ const fetchDemandes = async () => {
                           <p className="text-sm font-bold text-red-800">{eleveNom ? `${eleveNom.prenom} ${eleveNom.nom}` : `Élève #${a.eleve_id}`}</p>
                           <p className="text-xs text-red-400">{new Date(a.date).toLocaleDateString('fr-FR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}</p>
                         </div>
-                        <button
-                          onClick={async () => {
-                            if (!confirm('Supprimer cette absence ?')) return
-                            await supabase.from('absences').delete().eq('id', a.id)
-                            fetchElevesAbsence(absenceClasseId)
-                            setSuccess('Absence supprimée !')
-                          }}
-                          className="text-red-400 hover:text-red-600 text-xs font-semibold px-3 py-1 rounded-lg hover:bg-red-100 transition"
-                        >🗑️</button>
+                        <button onClick={async () => { if (!confirm('Supprimer cette absence ?')) return; await supabase.from('absences').delete().eq('id', a.id); fetchElevesAbsence(absenceClasseId); setSuccess('Absence supprimée !') }} className="text-red-400 hover:text-red-600 text-xs font-semibold px-3 py-1 rounded-lg hover:bg-red-100 transition">🗑️</button>
                       </div>
                     )
                   })}
@@ -369,11 +343,7 @@ const fetchDemandes = async () => {
           <h1 className="text-2xl font-bold text-gray-800 mb-6">📅 Emplois du temps</h1>
           <div className="bg-white rounded-2xl shadow p-4 mb-6 flex items-center gap-4">
             <label className="text-sm font-semibold text-gray-700 whitespace-nowrap">Classe :</label>
-            <select
-              value={emploiClasseId}
-              onChange={e => { setEmploiClasseId(e.target.value); fetchEmplois(e.target.value) }}
-              className="border border-gray-300 rounded-lg px-4 py-2 text-gray-800 flex-1"
-            >
+            <select value={emploiClasseId} onChange={e => { setEmploiClasseId(e.target.value); fetchEmplois(e.target.value) }} className="border border-gray-300 rounded-lg px-4 py-2 text-gray-800 flex-1">
               <option value="">-- Sélectionnez une classe --</option>
               {classes.map(c => <option key={c.id} value={c.id}>{c.nom}</option>)}
             </select>
@@ -397,12 +367,7 @@ const fetchDemandes = async () => {
                           const cours = getCours(jour, creneau)
                           return (
                             <td key={jour} onClick={() => handleCellClick(jour, creneau)} className={`px-2 py-4 text-center border-r border-gray-200 last:border-r-0 cursor-pointer transition min-w-[100px] ${cours ? 'bg-blue-50 hover:bg-red-50' : 'hover:bg-green-50'}`}>
-                              {cours ? (
-                                <div>
-                                  <p className="text-xs font-bold text-blue-800">{cours.matiere}</p>
-                                  {cours.professeur && <p className="text-xs text-gray-400 mt-0.5">{cours.professeur}</p>}
-                                </div>
-                              ) : <span className="text-gray-300 text-xl">+</span>}
+                              {cours ? (<div><p className="text-xs font-bold text-blue-800">{cours.matiere}</p>{cours.professeur && <p className="text-xs text-gray-400 mt-0.5">{cours.professeur}</p>}</div>) : <span className="text-gray-300 text-xl">+</span>}
                             </td>
                           )
                         })}
@@ -582,7 +547,7 @@ const fetchDemandes = async () => {
               <h2 className="font-semibold text-gray-700">Liste par classe</h2>
               <p className="text-gray-400 text-sm">Voir et supprimer</p>
             </div>
-            <div className="bg-white rounded-2xl shadow p-6 border-2 border-green-100">
+            <div onClick={() => setPage('import')} className="bg-white rounded-2xl shadow p-6 cursor-pointer hover:shadow-md transition border-2 border-green-100">
               <div className="text-3xl mb-2">📂</div>
               <h2 className="font-semibold text-gray-700">Importer CSV</h2>
               <p className="text-gray-400 text-sm">Ajouter en masse</p>
@@ -602,20 +567,14 @@ const fetchDemandes = async () => {
           <h1 className="text-2xl font-bold text-gray-800 mb-6">📋 Liste des élèves</h1>
           <div className="bg-white rounded-2xl shadow p-4 mb-6">
             <label className="block text-sm font-semibold text-gray-700 mb-2">Classe</label>
-            <select
-              value={classeId}
-              onChange={e => { setClasseId(e.target.value); fetchElevesClasse(e.target.value) }}
-              className="w-full border border-gray-300 rounded-lg px-4 py-2 text-gray-800"
-            >
+            <select value={classeId} onChange={e => { setClasseId(e.target.value); fetchElevesClasse(e.target.value) }} className="w-full border border-gray-300 rounded-lg px-4 py-2 text-gray-800">
               <option value="">-- Sélectionnez une classe --</option>
               {classes.map(c => <option key={c.id} value={c.id}>{c.nom}</option>)}
             </select>
           </div>
           {classeId && (
             <div className="bg-white rounded-2xl shadow p-6">
-              <h2 className="font-semibold text-gray-700 mb-4">
-                {classes.find(c => c.id === classeId)?.nom} — {elevesClasse.length} élève{elevesClasse.length > 1 ? 's' : ''}
-              </h2>
+              <h2 className="font-semibold text-gray-700 mb-4">{classes.find(c => c.id === classeId)?.nom} — {elevesClasse.length} élève{elevesClasse.length > 1 ? 's' : ''}</h2>
               {success && <div className="bg-green-50 border border-green-200 text-green-600 px-4 py-3 rounded-lg mb-4 text-sm">{success}</div>}
               {elevesClasse.length === 0 && <p className="text-gray-400 text-sm text-center py-4">Aucun élève dans cette classe.</p>}
               <div className="space-y-2">
@@ -625,15 +584,7 @@ const fetchDemandes = async () => {
                       <span className="text-xs text-gray-400 font-bold w-6">{index + 1}</span>
                       <p className="text-sm font-semibold text-gray-800">{e.prenom} {e.nom}</p>
                     </div>
-                    <button
-                      onClick={async () => {
-                        if (!confirm(`Supprimer ${e.prenom} ${e.nom} ?`)) return
-                        const { error } = await supabase.from('élèves').delete().eq('id', e.id)
-                        if (error) { alert('Erreur : ' + error.message) }
-                        else { setSuccess(`${e.prenom} ${e.nom} supprimé !`); fetchElevesClasse(classeId) }
-                      }}
-                      className="text-red-400 hover:text-red-600 text-xs font-semibold px-3 py-1 rounded-lg hover:bg-red-50 transition"
-                    >
+                    <button onClick={async () => { if (!confirm(`Supprimer ${e.prenom} ${e.nom} ?`)) return; const { error } = await supabase.from('élèves').delete().eq('id', e.id); if (error) { alert('Erreur : ' + error.message) } else { setSuccess(`${e.prenom} ${e.nom} supprimé !`); fetchElevesClasse(classeId) } }} className="text-red-400 hover:text-red-600 text-xs font-semibold px-3 py-1 rounded-lg hover:bg-red-50 transition">
                       🗑️ Supprimer
                     </button>
                   </div>
@@ -665,9 +616,7 @@ const fetchDemandes = async () => {
                 <div className="flex justify-between items-start mb-3">
                   <div>
                     <p className="font-bold text-gray-800 text-sm">{d.eleve_nom}</p>
-                    <p className="text-xs text-gray-400">
-                      {new Date(d.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                    </p>
+                    <p className="text-xs text-gray-400">{new Date(d.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
                   </div>
                   {d.reponse ? (
                     <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-semibold">✅ Répondu</span>
@@ -687,25 +636,14 @@ const fetchDemandes = async () => {
                 )}
                 {!d.reponse && (
                   <div>
-                    <textarea
-                      value={reponses[d.id] ?? ''}
-                      onChange={e => setReponses(prev => ({ ...prev, [d.id]: e.target.value }))}
-                      className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm text-gray-800 h-20 focus:outline-none focus:border-blue-400"
-                      placeholder="Écrivez votre réponse..."
-                    />
+                    <textarea value={reponses[d.id] ?? ''} onChange={e => setReponses(prev => ({ ...prev, [d.id]: e.target.value }))} className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm text-gray-800 h-20 focus:outline-none focus:border-blue-400" placeholder="Écrivez votre réponse..." />
                     <button
                       onClick={async () => {
                         const rep = reponses[d.id]
                         if (!rep?.trim()) return
-                        const { error } = await supabase
-                          .from('demandes')
-                          .update({ reponse: rep.trim(), repondu_at: new Date().toISOString() })
-                          .eq('id', d.id)
+                        const { error } = await supabase.from('demandes').update({ reponse: rep.trim(), repondu_at: new Date().toISOString() }).eq('id', d.id)
                         if (error) { alert('Erreur : ' + error.message) }
-                        else {
-                          setReponses(prev => { const n = {...prev}; delete n[d.id]; return n })
-                          fetchDemandes()
-                        }
+                        else { setReponses(prev => { const n = {...prev}; delete n[d.id]; return n }); fetchDemandes() }
                       }}
                       className="w-full mt-2 bg-blue-600 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-blue-700 transition"
                     >
@@ -715,6 +653,108 @@ const fetchDemandes = async () => {
                 )}
               </div>
             ))}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // ── PAGE IMPORT CSV ────────────────────────────────────────────
+  if (page === 'import') {
+    const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0]
+      if (!file) return
+      const reader = new FileReader()
+      reader.onload = (ev) => {
+        const text = ev.target?.result as string
+        const lines = text.split('\n').filter(l => l.trim())
+        const headers = lines[0].toLowerCase().split(',').map(h => h.trim().replace(/"/g, ''))
+        const rows = lines.slice(1).map(line => {
+          const values = line.split(',').map(v => v.trim().replace(/"/g, ''))
+          const obj: any = {}
+          headers.forEach((h, i) => { obj[h] = values[i] ?? '' })
+          return obj
+        }).filter(r => r.prenom || r.prénom || r.nom)
+        setImportData(rows)
+        setImportError('')
+        setImportSuccess('')
+      }
+      reader.readAsText(file)
+    }
+
+    const handleImport = async () => {
+      if (!importClasse) { setImportError('Choisissez une classe'); return }
+      if (importData.length === 0) { setImportError('Importez un fichier CSV'); return }
+      setImportLoading(true); setImportError(''); setImportSuccess('')
+      const rows = importData.map(r => ({
+        prenom: r.prenom || r.prénom || '',
+        nom: r.nom || '',
+        date_naissance: r.date_naissance || r['date de naissance'] || null,
+        classe_id: importClasse,
+      })).filter(r => r.prenom && r.nom)
+      const { error } = await supabase.from('élèves').insert(rows)
+      if (error) { setImportError('Erreur : ' + error.message) }
+      else {
+        setImportSuccess(`✅ ${rows.length} élève${rows.length > 1 ? 's' : ''} importé${rows.length > 1 ? 's' : ''} avec succès !`)
+        setImportData([])
+      }
+      setImportLoading(false)
+    }
+
+    const csvContent = 'data:text/csv;charset=utf-8,prenom,nom,date_naissance%0AFatou,Diallo,2015-03-12%0AAmadou,Ndiaye,2014-07-25'
+
+    return (
+      <div className="min-h-screen bg-gray-50 p-6">
+        <div className="max-w-2xl mx-auto">
+          <button onClick={() => { setPage('eleves'); setImportSuccess(''); setImportError(''); setImportData([]) }} className="text-blue-600 mb-4">← Retour</button>
+          <h1 className="text-2xl font-bold text-gray-800 mb-6">📂 Importer des élèves</h1>
+          <div className="bg-white rounded-2xl shadow p-6 space-y-4 mb-6">
+            {importSuccess && <div className="bg-green-50 border border-green-200 text-green-600 px-4 py-3 rounded-lg text-sm">{importSuccess}</div>}
+            {importError && <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg text-sm">{importError}</div>}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1">Classe de destination</label>
+              <select value={importClasse} onChange={e => setImportClasse(e.target.value)} className="w-full border border-gray-300 rounded-lg px-4 py-2 text-gray-800">
+                <option value="">-- Choisir une classe --</option>
+                {classes.map(c => <option key={c.id} value={c.id}>{c.nom}</option>)}
+              </select>
+            </div>
+            <div className="bg-blue-50 rounded-xl p-4">
+              <p className="text-xs font-bold text-blue-700 mb-2">📋 Format du fichier CSV attendu :</p>
+              <code className="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded">prenom,nom,date_naissance</code>
+              <p className="text-xs text-blue-500 mt-2">Exemple :<br/>Fatou,Diallo,2015-03-12<br/>Amadou,Ndiaye,2014-07-25</p>
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1">Fichier CSV</label>
+              <input type="file" accept=".csv" onChange={handleFile} className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm text-gray-800 bg-white" />
+            </div>
+            {importData.length > 0 && (
+              <div>
+                <p className="text-sm font-semibold text-gray-700 mb-2">Aperçu — {importData.length} élève{importData.length > 1 ? 's' : ''} détecté{importData.length > 1 ? 's' : ''}</p>
+                <div className="max-h-48 overflow-y-auto space-y-1">
+                  {importData.slice(0, 10).map((r, i) => (
+                    <div key={i} className="flex gap-3 bg-gray-50 rounded-lg px-3 py-2 text-sm">
+                      <span className="text-gray-400 text-xs w-4">{i + 1}</span>
+                      <span className="font-medium text-gray-800">{r.prenom || r.prénom} {r.nom}</span>
+                      {(r.date_naissance || r['date de naissance']) && <span className="text-gray-400 text-xs ml-auto">{r.date_naissance || r['date de naissance']}</span>}
+                    </div>
+                  ))}
+                  {importData.length > 10 && <p className="text-xs text-gray-400 text-center py-1">... et {importData.length - 10} autres</p>}
+                </div>
+              </div>
+            )}
+            <button onClick={handleImport} disabled={importLoading || importData.length === 0 || !importClasse} className="w-full bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700 transition disabled:opacity-50">
+              {importLoading ? 'Importation...' : `📥 Importer ${importData.length > 0 ? importData.length + ' élève' + (importData.length > 1 ? 's' : '') : ''}`}
+            </button>
+          </div>
+          <div className="bg-white rounded-2xl shadow p-4 text-center">
+            <p className="text-sm text-gray-500 mb-3">Vous n'avez pas de fichier CSV ? Téléchargez le modèle :</p>
+            <a
+              href={csvContent}
+              download="modele_eleves.csv"
+              className="inline-block bg-blue-600 text-white px-6 py-2 rounded-lg text-sm font-semibold hover:bg-blue-700 transition"
+            >
+              📄 Télécharger le modèle CSV
+            </a>
           </div>
         </div>
       </div>
